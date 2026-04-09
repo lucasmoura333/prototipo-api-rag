@@ -1,0 +1,30 @@
+# Plano local (não versionado)
+plano/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Dados locais
+data/
+*.pdf
+*.csv
+*.xlsx
+
+# Ambiente
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# Docker volumes
+qdrant_data/

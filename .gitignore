@@ -1,5 +1,9 @@
-# Plano local (não versionado)
-plano/
+# Plano local — planos/ É versionado (tracking de progresso)
+
+# Modelos GGUF (grandes demais para git)
+models/
+*.gguf
+planos/
 
 # Python
 __pycache__/

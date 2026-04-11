@@ -1,0 +1,47 @@
+# API
+fastapi>=0.115.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0
+python-multipart>=0.0.9
+
+# LlamaIndex core
+llama-index>=0.11.0
+llama-index-vector-stores-qdrant
+llama-index-llms-openai-like
+llama-index-embeddings-huggingface
+llama-index-readers-file
+sentence-transformers
+
+# Vector DB
+qdrant-client>=1.9.0
+
+# PDF
+pymupdf
+pytesseract
+Pillow
+
+# Planilhas
+pandas
+openpyxl
+
+# Vídeo
+openai-whisper
+opencv-python
+ffmpeg-python
+
+# Ollama client — TODO: refactor video_reader.py para llama-server OpenAI API
+ollama
+
+# GPU / modelos GGUF
+huggingface-hub
+
+# HTTP (health check do llama-server em refiner.py)
+httpx
+
+# Configuração centralizada
+python-dotenv
+
+# TTS — Chatterbox Multilingual com clonagem de voz (Python >=3.10, inclui 3.12)
+# Modelo: ResembleAI/chatterbox-multilingual (500M params, 23 línguas + PT nativo)
+# XTTS v2 (Coqui) descartado: requer Python <3.12
+chatterbox-tts>=0.1.7

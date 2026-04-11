@@ -32,7 +32,7 @@ def _build_llm() -> OpenAILike:
         api_base=f"http://{LLAMA_SERVER_HOST}:{LLAMA_SERVER_PORT}/v1",
         api_key="not-needed",
         is_chat_model=True,
-        request_timeout=120.0,
+        request_timeout=60.0,
         context_window=4096,
     )
 
@@ -90,7 +90,7 @@ def health():
 
 @app.post("/query", response_model=QueryResponse)
 def query(body: QueryRequest):
-    result = _query_engine.query(body.q)
+    result = _query_engine.query(f"/no_think {body.q}")
     sources = list({node.metadata.get("file_name", "unknown") for node in result.source_nodes})
     response_text = str(result)
 
@@ -145,7 +145,7 @@ async def study_audio(body: StudyAudioRequest):
     from tts_engine import generate_audio
 
     # 1. RAG: busca os chunks mais relevantes
-    result = _query_engine.query(body.topic)
+    result = _query_engine.query(f"/no_think {body.topic}")
     context = "\n\n".join(node.get_content() for node in result.source_nodes)
     sources = list({node.metadata.get("file_name", "unknown") for node in result.source_nodes})
 

@@ -42,7 +42,7 @@ def refinar(original_response: str, context: str) -> str:
         api_base=_LLAMA_SERVER_BASE,
         api_key="not-needed",
         is_chat_model=True,
-        request_timeout=90.0,
+        request_timeout=60.0,
     )
     prompt = _REFINE_PROMPT.format(
         original_response=original_response,

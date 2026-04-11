@@ -28,24 +28,29 @@ REFINED RESPONSE:"""
 
 def _is_llama_server_up() -> bool:
     try:
-        r = httpx.get(_LLAMA_SERVER_HEALTH, timeout=2.0)
+        r = httpx.get(_LLAMA_SERVER_HEALTH, timeout=5.0)
         return r.status_code == 200
     except Exception:
         return False
 
 
 def refinar(original_response: str, context: str) -> str:
-    if not _is_llama_server_up():
+    try:
+        if not _is_llama_server_up():
+            return original_response
+        llm = OpenAILike(
+            model=LLAMA_MODEL,
+            api_base=_LLAMA_SERVER_BASE,
+            api_key="not-needed",
+            is_chat_model=True,
+            timeout=180.0,
+            max_retries=0,
+            additional_kwargs={"extra_body": {"chat_template_kwargs": {"enable_thinking": False}}},
+        )
+        prompt = _REFINE_PROMPT.format(
+            original_response=original_response,
+            context=context,
+        )
+        return str(llm.complete(prompt))
+    except Exception:
         return original_response
-    llm = OpenAILike(
-        model=LLAMA_MODEL,
-        api_base=_LLAMA_SERVER_BASE,
-        api_key="not-needed",
-        is_chat_model=True,
-        request_timeout=60.0,
-    )
-    prompt = _REFINE_PROMPT.format(
-        original_response=original_response,
-        context=context,
-    )
-    return str(llm.complete(prompt))

@@ -3,7 +3,7 @@ import shutil
 
 import qdrant_client
 from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from llama_index.core import VectorStoreIndex
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.openai_like import OpenAILike
@@ -23,6 +23,10 @@ from config import (
 
 app = FastAPI(title="RAGatanga API", version="0.2.0")
 
+_AUDIO_DIR = os.path.join(os.path.dirname(__file__), "data", "audio")
+os.makedirs(_AUDIO_DIR, exist_ok=True)
+app.mount("/audio", StaticFiles(directory=_AUDIO_DIR), name="audio")
+
 _ALLOWED_EXTENSIONS = {".pdf", ".txt", ".csv", ".xlsx", ".xls", ".md", ".mp4", ".mkv", ".avi", ".mov"}
 
 
@@ -32,8 +36,10 @@ def _build_llm() -> OpenAILike:
         api_base=f"http://{LLAMA_SERVER_HOST}:{LLAMA_SERVER_PORT}/v1",
         api_key="not-needed",
         is_chat_model=True,
-        request_timeout=60.0,
+        timeout=240.0,
+        max_retries=0,
         context_window=4096,
+        additional_kwargs={"extra_body": {"chat_template_kwargs": {"enable_thinking": False}}},
     )
 
 
@@ -90,7 +96,7 @@ def health():
 
 @app.post("/query", response_model=QueryResponse)
 def query(body: QueryRequest):
-    result = _query_engine.query(f"/no_think {body.q}")
+    result = _query_engine.query(body.q)
     sources = list({node.metadata.get("file_name", "unknown") for node in result.source_nodes})
     response_text = str(result)
 
@@ -145,7 +151,7 @@ async def study_audio(body: StudyAudioRequest):
     from tts_engine import generate_audio
 
     # 1. RAG: busca os chunks mais relevantes
-    result = _query_engine.query(f"/no_think {body.topic}")
+    result = _query_engine.query(body.topic)
     context = "\n\n".join(node.get_content() for node in result.source_nodes)
     sources = list({node.metadata.get("file_name", "unknown") for node in result.source_nodes})
 
@@ -158,24 +164,34 @@ async def study_audio(body: StudyAudioRequest):
         topic=body.topic,
         language_name=lang_name,
         max_words=body.max_words,
-        context=context[:3000],  # evita overflow de contexto
+        context=context[:800],  # contexto curto para prompt mais rápido
     )
-    narration = str(_llm.complete(prompt)).strip()
+    try:
+        narration = str(_llm.complete(prompt, max_tokens=1200)).strip()
+    except Exception:
+        narration = ""
 
     if not narration:
         raise HTTPException(status_code=500, detail="LLM não gerou narração.")
 
-    # 3. TTS: sintetiza com voz clonada
+    filename = f"estudo_{body.topic[:30].replace(' ', '_')}.wav"
+
+    # 3. TTS: sintetiza com voz clonada, salva em data/audio/
     try:
-        audio_path = generate_audio(narration, language=body.language)
+        audio_path = generate_audio(
+            narration,
+            language=body.language,
+            output_path=os.path.join(_AUDIO_DIR, filename),
+        )
     except FileNotFoundError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
     # 4. Retorna o WAV — FileResponse serve o arquivo e o deleta é responsabilidade do cliente
     filename = f"estudo_{body.topic[:30].replace(' ', '_')}.wav"
-    return FileResponse(
-        audio_path,
-        media_type="audio/wav",
-        filename=filename,
-        headers={"X-Sources": ", ".join(sources), "X-Narration-Words": str(len(narration.split()))},
-    )
+
+    return {
+        "narration": narration,
+        "audio_url": f"/audio/{filename}",
+        "sources": sources,
+        "word_count": len(narration.split()),
+    }
